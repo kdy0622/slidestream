@@ -20,6 +20,8 @@
       background-color: var(--bg-dark);
       color: #e2e8f0;
       overflow-x: hidden;
+      margin: 0;
+      padding: 0;
     }
 
     .glass-card {
@@ -28,22 +30,8 @@
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    .hero-gradient {
-      background: radial-gradient(circle at top, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
-    }
-
-    .drop-zone {
-      border: 2px dashed rgba(255, 255, 255, 0.1);
-      transition: all 0.3s ease;
-    }
-
-    .drop-zone:hover {
-      border-color: var(--accent-blue);
-      background: rgba(59, 130, 246, 0.05);
-    }
-
     .custom-scrollbar::-webkit-scrollbar {
-      width: 8px;
+      width: 6px;
     }
     .custom-scrollbar::-webkit-scrollbar-track {
       background: #0b1120;
@@ -56,13 +44,18 @@
       background: #334155;
     }
 
-    @keyframes float {
-      0% { transform: translateY(0px); }
-      50% { transform: translateY(-10px); }
-      100% { transform: translateY(0px); }
+    /* Prevention of layout shifts */
+    #root:empty {
+      background-color: #0b1120;
+      height: 100vh;
+      width: 100vw;
     }
-    .animate-float { animation: float 4s ease-in-out infinite; }
   </style>
+  <script>
+    // Critical: Polyfill 'process' to avoid ReferenceErrors during module load
+    window.process = window.process || { env: {} };
+    // This will be overridden by the platform if available
+  </script>
   <script type="importmap">
   {
     "imports": {
