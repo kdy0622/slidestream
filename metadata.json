@@ -1,0 +1,7 @@
+{
+  "name": "SlideStream AI",
+  "description": "Professional PDF-to-video tool that generates AI scripts, high-quality TTS audio, and synced subtitles directly in the browser.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
