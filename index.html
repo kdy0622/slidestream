@@ -6,7 +6,7 @@
   <title>SlideCaster - AI 슬라이드 영상 제작</title>
   
   <script>
-    // 전역 객체 폴리필
+    // Gemini SDK 및 환경 변수 호환성을 위한 폴리필
     window.process = { env: { API_KEY: "" } };
   </script>
 
@@ -43,7 +43,7 @@
       font-weight: 700;
     }
     #root:empty::after {
-      content: "앱을 로딩하고 있습니다...";
+      content: "애플리케이션을 준비 중입니다...";
       animation: pulse 1.5s infinite;
     }
     @keyframes pulse {
@@ -63,7 +63,7 @@
     }
   </style>
 
-  <!-- 정밀하게 조정된 importmap (SyntaxError 방지) -->
+  <!-- 안정적인 ESM 라이브러리 매핑 (버전 고정 및 특수문자 제거) -->
   <script type="importmap">
 {
   "imports": {
@@ -79,7 +79,7 @@
 </head>
 <body class="custom-scrollbar">
   <div id="root"></div>
-  <!-- 메인 스크립트 로드 -->
+  <!-- 진입점 스크립트 -->
   <script type="module" src="index.tsx"></script>
 </body>
 </html>
