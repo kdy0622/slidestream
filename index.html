@@ -5,8 +5,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SlideCaster - AI 슬라이드 영상 제작</title>
+  
+  <!-- Critical: Polyfill process immediately -->
+  <script>
+    window.process = { env: { API_KEY: "" } };
+    try {
+      // If the platform provides a process object, merge it
+      if (typeof process !== 'undefined') {
+        window.process = { ...window.process, ...process };
+      }
+    } catch (e) {}
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap');
     
@@ -44,28 +57,25 @@
       background: #334155;
     }
 
-    /* Prevention of layout shifts */
     #root:empty {
       background-color: #0b1120;
       height: 100vh;
       width: 100vw;
     }
   </style>
-  <script>
-    // Critical: Polyfill 'process' to avoid ReferenceErrors during module load
-    window.process = window.process || { env: {} };
-    // This will be overridden by the platform if available
-  </script>
+  
   <script type="importmap">
-  {
-    "imports": {
-      "react/": "https://esm.sh/react@^19.2.4/",
-      "react": "https://esm.sh/react@^19.2.4",
-      "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
-      "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
-    }
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
+    "react-dom": "https://esm.sh/react-dom@^19.2.4",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.4/client",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
   }
-  </script>
+}
+</script>
 </head>
 <body class="custom-scrollbar">
   <div id="root"></div>
