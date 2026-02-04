@@ -13,7 +13,7 @@ const App: React.FC = () => {
   const [slides, setSlides] = useState<SlideData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; isQuota: boolean } | null>(null);
 
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>({
     fontSize: 40,
@@ -31,21 +31,15 @@ const App: React.FC = () => {
     speakingRate: 'normal'
   });
 
-  // Ensure API Key exists
-  useEffect(() => {
-    if (!process.env.API_KEY) {
-      console.error("Gemini API Key is missing. Check your environment variables.");
-      setError("시스템 초기화 오류: API 키가 설정되지 않았습니다.");
-    }
-  }, []);
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent) => {
     let file: File | undefined;
-    if ('files' in e.target && e.target.files?.[0]) {
-      file = e.target.files[0];
-    } else if ('dataTransfer' in e && e.dataTransfer.files?.[0]) {
-      e.preventDefault();
-      file = e.dataTransfer.files[0];
+    if (e.type === 'change') {
+      const target = e.target as HTMLInputElement;
+      if (target.files?.[0]) file = target.files[0];
+    } else if (e.type === 'drop') {
+      const event = e as React.DragEvent;
+      event.preventDefault();
+      if (event.dataTransfer.files?.[0]) file = event.dataTransfer.files[0];
     }
 
     if (!file) return;
@@ -65,8 +59,7 @@ const App: React.FC = () => {
       setSlides(newSlides);
       setStep(AppStep.REVIEW);
     } catch (err: any) {
-      console.error(err);
-      setError(`PDF 처리 오류: ${err.message || '파일을 읽는 도중 문제가 발생했습니다.'}`);
+      setError({ message: `PDF 처리 오류: ${err.message || '파일을 읽는 도중 문제가 발생했습니다.'}`, isQuota: false });
     } finally {
       setIsLoading(false);
     }
@@ -87,10 +80,24 @@ const App: React.FC = () => {
       setSlides(updatedSlides);
       setStep(AppStep.SCRIPT);
     } catch (err: any) {
-      console.error(err);
-      setError(`대본 생성 오류: ${err.message || 'AI 서비스 연결에 실패했습니다.'}`);
+      const isQuota = err.message === 'QUOTA_EXCEEDED';
+      setError({ 
+        message: isQuota ? "현재 시스템의 AI 사용량이 초과되었습니다. 잠시 후 다시 시도하거나, 아래 버튼을 눌러 본인의 API 키를 사용하여 계속 진행할 수 있습니다." : `대본 생성 오류: ${err.message || 'AI 서비스 연결에 실패했습니다.'}`, 
+        isQuota 
+      });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOpenKeySelection = async () => {
+    try {
+      if (window.aistudio?.openSelectKey) {
+        await window.aistudio.openSelectKey();
+        setError(null); // Proceed assuming success after closing dialog
+      }
+    } catch (e) {
+      console.error("Failed to open key selection", e);
     }
   };
 
@@ -101,18 +108,29 @@ const App: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-[#0b1120] flex items-center justify-center p-8">
-        <div className="bg-red-500/10 border border-red-500/20 p-8 rounded-3xl max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-             <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <div className="bg-slate-900/80 backdrop-blur-xl border border-white/10 p-10 rounded-[2.5rem] max-w-lg w-full text-center shadow-2xl">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
+             <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">오류가 발생했습니다</h2>
-          <p className="text-red-200/60 text-sm mb-8 leading-relaxed">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-full py-3 bg-red-500 hover:bg-red-400 text-white rounded-xl font-bold transition-all shadow-lg shadow-red-500/20"
-          >
-            다시 시도하기
-          </button>
+          <h2 className="text-2xl font-black text-white mb-4">{error.isQuota ? "할당량 초과 안내" : "오류 발생"}</h2>
+          <p className="text-slate-400 text-sm mb-10 leading-relaxed font-medium">{error.message}</p>
+          
+          <div className="flex flex-col gap-4">
+            {error.isQuota && (
+              <button 
+                onClick={handleOpenKeySelection}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-600/30 transition-all active:scale-95"
+              >
+                본인 API 키 등록하기
+              </button>
+            )}
+            <button 
+              onClick={() => setError(null)}
+              className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl font-black text-sm transition-all"
+            >
+              닫기
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -120,7 +138,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0b1120] text-slate-200 flex flex-col">
-      <header className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-[#0b1120] sticky top-0 z-50">
+      <header className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-[#0b1120]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center shadow-lg shadow-blue-600/20">
              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -150,8 +168,7 @@ const App: React.FC = () => {
             ))}
           </div>
         )}
-
-        <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30"></div>
+        <div className="w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/20"></div>
       </header>
 
       <main className="flex-grow flex flex-col items-center">
@@ -172,14 +189,14 @@ const App: React.FC = () => {
             <div 
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileUpload}
-              className="w-full max-w-xl aspect-video drop-zone rounded-[2rem] bg-slate-900/30 flex flex-col items-center justify-center cursor-pointer group hover:bg-slate-800/20"
+              className="w-full max-w-xl aspect-video drop-zone rounded-[2.5rem] bg-slate-900/30 flex flex-col items-center justify-center cursor-pointer group hover:bg-slate-800/20"
             >
-              <div className="bg-blue-600/10 p-5 rounded-full mb-6 group-hover:scale-110 transition-transform">
-                <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+              <div className="bg-blue-600/10 p-6 rounded-full mb-6 group-hover:scale-110 transition-transform">
+                <svg className="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
               </div>
-              <h3 className="text-lg font-bold mb-1">PDF를 드래그 앤 드롭하세요</h3>
-              <p className="text-slate-500 text-xs mb-8">또는 클릭하여 파일 선택</p>
-              <label className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-xl font-bold shadow-xl shadow-blue-600/20 cursor-pointer transition-all active:scale-95">
+              <h3 className="text-xl font-bold mb-1">PDF를 드래그 앤 드롭하세요</h3>
+              <p className="text-slate-500 text-sm mb-10">또는 클릭하여 파일 선택</p>
+              <label className="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-2xl font-black shadow-2xl shadow-blue-600/20 cursor-pointer transition-all active:scale-95">
                 파일 탐색기 열기
                 <input type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
               </label>
@@ -230,8 +247,8 @@ const App: React.FC = () => {
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[100]">
           <div className="flex flex-col items-center text-center p-6">
             <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-6"></div>
-            <p className="text-xl font-bold mb-2">{loadingText}</p>
-            <p className="text-slate-500 animate-pulse text-sm font-medium">인터넷 속도에 따라 최대 몇 분이 소요될 수 있습니다.</p>
+            <p className="text-xl font-black mb-2">{loadingText}</p>
+            <p className="text-slate-500 animate-pulse text-sm font-medium">작업이 완료될 때까지 창을 닫지 마세요.</p>
           </div>
         </div>
       )}

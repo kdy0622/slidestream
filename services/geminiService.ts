@@ -1,8 +1,5 @@
 
-import { GoogleGenAI, Type, Modality } from "@google/genai";
-
-// Fix: Strictly use process.env.API_KEY for initialization as per guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+import { GoogleGenAI, Modality } from "@google/genai";
 
 function decode(base64: string) {
   const binaryString = atob(base64);
@@ -33,11 +30,21 @@ async function decodeAudioData(
   return buffer;
 }
 
+const handleApiError = (error: any) => {
+  console.error("Gemini API Error:", error);
+  const errorMessage = error?.message || String(error);
+  if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('quota')) {
+    throw new Error("QUOTA_EXCEEDED");
+  }
+  throw error;
+};
+
 export const generateScript = async (
   imageData: string,
   audience: string,
   length: string
 ): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const lengthDesc = {
     short: '30초 미만 (약 2-3문장)',
     medium: '1분 미만 (약 5-7문장)',
@@ -56,18 +63,20 @@ export const generateScript = async (
     6. 자연스러운 구어체로 작성하세요.
   `;
 
-  // Fix: Directly use generateContent for text task using gemini-3-flash-preview
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: {
-      parts: [
-        { inlineData: { mimeType: 'image/png', data: imageData.split(',')[1] } },
-        { text: prompt }
-      ]
-    }
-  });
-
-  return response.text?.trim() || '대본을 생성할 수 없습니다.';
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [
+          { inlineData: { mimeType: 'image/png', data: imageData.split(',')[1] } },
+          { text: prompt }
+        ]
+      }
+    });
+    return response.text?.trim() || '대본을 생성할 수 없습니다.';
+  } catch (error) {
+    return handleApiError(error);
+  }
 };
 
 export const generateTTS = async (
@@ -75,28 +84,32 @@ export const generateTTS = async (
   audioContext: AudioContext,
   playbackRate: number = 1.0
 ): Promise<{ buffer: AudioBuffer; duration: number }> => {
-  // Fix: Use gemini-2.5-flash-preview-tts for speech generation
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-preview-tts",
-    contents: [{ parts: [{ text: `말하는 속도는 ${playbackRate}배속으로 들리게 자연스럽게 읽어줘: ${text}` }] }],
-    config: {
-      responseModalities: [Modality.AUDIO],
-      speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: 'Kore' },
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text: `말하는 속도는 ${playbackRate}배속으로 들리게 자연스럽게 읽어줘: ${text}` }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: 'Kore' },
+          },
         },
       },
-    },
-  });
+    });
 
-  const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  if (!base64Audio) throw new Error("TTS generation failed");
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!base64Audio) throw new Error("TTS generation failed");
 
-  const audioBytes = decode(base64Audio);
-  const audioBuffer = await decodeAudioData(audioBytes, audioContext, 24000, 1);
-  
-  return {
-    buffer: audioBuffer,
-    duration: audioBuffer.duration
-  };
+    const audioBytes = decode(base64Audio);
+    const audioBuffer = await decodeAudioData(audioBytes, audioContext, 24000, 1);
+    
+    return {
+      buffer: audioBuffer,
+      duration: audioBuffer.duration
+    };
+  } catch (error) {
+    return handleApiError(error);
+  }
 };
