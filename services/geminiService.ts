@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Modality } from "@google/genai";
 
 function decode(base64: string) {
@@ -44,6 +43,7 @@ export const generateScript = async (
   audience: string,
   length: string
 ): Promise<string> => {
+  // 시스템에서 주입하는 process.env.API_KEY를 직접 참조합니다.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const lengthDesc = {
     short: '30초 미만 (약 2-3문장)',
@@ -90,6 +90,7 @@ export const generateTTS = async (
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: `말하는 속도는 ${playbackRate}배속으로 들리게 자연스럽게 읽어줘: ${text}` }] }],
       config: {
+        // responseModalities는 반드시 단일 요소 ['AUDIO']여야 합니다.
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {

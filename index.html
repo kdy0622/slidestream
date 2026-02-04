@@ -4,11 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SlideStream AI - PDF to Video</title>
-  
-  <script>
-    // 전역 환경 변수 설정
-    window.process = { env: { API_KEY: "" } };
-  </script>
 
   <!-- 외부 라이브러리 로드 -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -62,7 +57,7 @@
     }
   </style>
 
-  <!-- 오류 방지를 위한 정제된 importmap -->
+  <!-- 오류 방지를 위해 캐럿(^) 문자가 없는 고정 버전 매핑 -->
   <script type="importmap">
 {
   "imports": {
