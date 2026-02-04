@@ -6,8 +6,8 @@
   <title>SlideCaster - AI 슬라이드 영상 제작</title>
   
   <script>
-    // Gemini SDK 및 라이브러리 호환성을 위한 전역 process 객체 선언
-    window.process = window.process || { env: { API_KEY: "" } };
+    // 전역 객체 폴리필
+    window.process = { env: { API_KEY: "" } };
   </script>
 
   <!-- 외부 라이브러리 (Tailwind, PDF.js) -->
@@ -31,7 +31,7 @@
       min-height: 100vh;
     }
 
-    /* 로딩 중일 때 표시될 스타일 */
+    /* 초기 로딩 상태 시각화 */
     #root:empty {
       display: flex;
       align-items: center;
@@ -39,22 +39,16 @@
       height: 100vh;
       background: #0b1120;
       color: #3b82f6;
-      font-size: 1.25rem;
-      font-weight: 800;
+      font-size: 1.1rem;
+      font-weight: 700;
     }
     #root:empty::after {
-      content: "애플리케이션을 준비 중입니다...";
+      content: "앱을 로딩하고 있습니다...";
       animation: pulse 1.5s infinite;
     }
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    .glass-card {
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      50% { opacity: 0.5; }
     }
 
     .custom-scrollbar::-webkit-scrollbar {
@@ -69,7 +63,7 @@
     }
   </style>
 
-  <!-- 안정적인 ESM 라이브러리 매핑 (React 19) -->
+  <!-- 정밀하게 조정된 importmap (SyntaxError 방지) -->
   <script type="importmap">
 {
   "imports": {
@@ -85,6 +79,7 @@
 </head>
 <body class="custom-scrollbar">
   <div id="root"></div>
+  <!-- 메인 스크립트 로드 -->
   <script type="module" src="index.tsx"></script>
 </body>
 </html>
