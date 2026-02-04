@@ -65,7 +65,19 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
       ctx.fillStyle = `rgba(${hexToRgb(style.backgroundColor)}, ${style.backgroundOpacity})`;
       const px = 40, py = 20;
       ctx.beginPath();
-      ctx.roundRect(x - px, y - textHeight/2 - py, textWidth + px*2, textHeight + py*2, 12);
+      const rx = x - px, ry = y - textHeight/2 - py, rw = textWidth + px*2, rh = textHeight + py*2, radius = 12;
+      
+      // Fallback for roundRect
+      if (ctx.roundRect) {
+        ctx.roundRect(rx, ry, rw, rh, radius);
+      } else {
+        ctx.moveTo(rx + radius, ry);
+        ctx.arcTo(rx + rw, ry, rx + rw, ry + rh, radius);
+        ctx.arcTo(rx + rw, ry + rh, rx, ry + rh, radius);
+        ctx.arcTo(rx, ry + rh, rx, ry, radius);
+        ctx.arcTo(rx, ry, rx + rw, ry, radius);
+        ctx.closePath();
+      }
       ctx.fill();
 
       ctx.fillStyle = style.textColor;
@@ -96,11 +108,8 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
     { length: 'long', label: '길게', desc: '~2분/장' }
   ];
 
-  const currentVoice = voices.find(v => v.label === options.voiceName) || voices[0];
-
   return (
     <div className="w-full max-w-7xl px-8 py-12 flex flex-col lg:flex-row gap-12 min-h-0 overflow-hidden">
-      {/* Left: Preview (50% Width) */}
       <div className="lg:w-1/2 flex flex-col gap-6">
         <h3 className="text-xl font-bold flex items-center gap-2">
           자막 미리보기 <span className="text-[10px] bg-blue-600/20 text-blue-500 px-2 py-0.5 rounded font-black uppercase tracking-widest">Preview</span>
@@ -113,7 +122,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
         </div>
       </div>
 
-      {/* Right: Config Panels (50% Width) */}
       <div className="lg:w-1/2 flex flex-col gap-10 overflow-y-auto custom-scrollbar pr-6">
         <div>
            <div className="text-blue-500 text-[10px] font-black tracking-widest uppercase mb-1">2단계 / 4단계</div>
@@ -121,7 +129,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
            <p className="text-slate-500 text-sm font-medium">내레이션과 자막 스타일을 설정하세요.</p>
         </div>
 
-        {/* Audience Selection */}
         <section>
           <h4 className="flex items-center gap-2 text-sm font-bold mb-4 text-slate-400">
              타겟 청중
@@ -144,7 +151,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
         </section>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            {/* Script Length */}
             <section>
                 <h4 className="flex items-center gap-2 text-sm font-bold mb-4 text-slate-400">
                     대본 길이
@@ -165,7 +171,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
                 </div>
             </section>
 
-            {/* Speaking Rate */}
             <section>
                 <h4 className="flex items-center gap-2 text-sm font-bold mb-4 text-slate-400">
                     말하기 속도
@@ -186,7 +191,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
             </section>
         </div>
 
-        {/* Audio Settings - Refined Dropdown style */}
         <section className="space-y-4">
           <h4 className="flex items-center gap-2 text-sm font-bold mb-4 text-slate-400">
              음성 설정
@@ -233,7 +237,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
           </div>
         </section>
 
-        {/* Subtitle Styles */}
         <section className="bg-slate-900/50 p-8 rounded-[2.5rem] border border-white/5 space-y-8">
           <h4 className="flex items-center gap-2 text-sm font-bold mb-4 text-slate-400">
              자막 스타일 설정
@@ -307,7 +310,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
           </div>
         </section>
 
-        {/* Footer Actions */}
         <div className="flex gap-4 pt-10 border-t border-white/5 pb-16">
            <button onClick={onPrev} className="flex-1 py-5 bg-slate-800 rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-slate-700 transition-all active:scale-95 shadow-lg">이전 단계</button>
            <button 

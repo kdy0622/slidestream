@@ -58,7 +58,6 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set resolution
     if (resolution === '1080p') {
         canvas.width = 1920;
         canvas.height = 1080;
@@ -77,12 +76,16 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
       ...audioDest.stream.getAudioTracks()
     ]);
 
-    const recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm;codecs=vp9,opus' });
+    // Compatible mime type check
+    const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4']
+      .find(type => MediaRecorder.isTypeSupported(type)) || '';
+
+    const recorder = new MediaRecorder(combinedStream, { mimeType });
     recorderRef.current = recorder;
 
     recorder.ondataavailable = (e) => chunks.push(e.data);
     recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: 'video/webm' });
+      const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
       setVideoUrl(URL.createObjectURL(blob));
       setStatus('finished');
     };
@@ -100,7 +103,6 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
       const img = new Image();
       img.src = slide.image;
       img.onload = () => {
-        // Draw image keeping aspect ratio or covering the set resolution
         const hRatio = canvas.width / img.width;
         const vRatio = canvas.height / img.height;
         const ratio = Math.min(hRatio, vRatio);
@@ -111,7 +113,6 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, img.width, img.height, centerShiftX, centerShiftY, img.width * ratio, img.height * ratio);
 
-        // Draw Subtitle
         drawSubtitle(ctx, canvas, slide.script);
 
         const source = audioContextRef.current!.createBufferSource();
@@ -124,13 +125,17 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
           renderFrame();
         };
       };
+      img.onerror = () => {
+        // Skip failed slide
+        currentSlideIndex++;
+        renderFrame();
+      };
     };
 
     renderFrame();
   };
 
   const drawSubtitle = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, text: string) => {
-    // Scale font size based on resolution (reference is 1080p)
     const scaleFactor = canvas.height / 1080;
     let fontSize = subtitleStyle.fontSize * scaleFactor;
     ctx.font = `bold ${fontSize}px 'Pretendard'`;
@@ -156,10 +161,20 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
     };
 
     ctx.fillStyle = `rgba(${hexToRgb(subtitleStyle.backgroundColor)}, ${subtitleStyle.backgroundOpacity})`;
-    const paddingX = 40 * scaleFactor;
-    const paddingY = 20 * scaleFactor;
+    const px = 40 * scaleFactor, py = 20 * scaleFactor;
+    const rx = x - px, ry = y - textHeight/2 - py, rw = textWidth + px*2, rh = textHeight + py*2, radius = 12 * scaleFactor;
+    
     ctx.beginPath();
-    ctx.roundRect(x - paddingX, y - textHeight/2 - paddingY, textWidth + paddingX * 2, textHeight + paddingY * 2, 12 * scaleFactor);
+    if (ctx.roundRect) {
+      ctx.roundRect(rx, ry, rw, rh, radius);
+    } else {
+      ctx.moveTo(rx + radius, ry);
+      ctx.arcTo(rx + rw, ry, rx + rw, ry + rh, radius);
+      ctx.arcTo(rx + rw, ry + rh, rx, ry + rh, radius);
+      ctx.arcTo(rx, ry + rh, rx, ry, radius);
+      ctx.arcTo(rx, ry, rx + rw, ry, radius);
+      ctx.closePath();
+    }
     ctx.fill();
 
     ctx.fillStyle = subtitleStyle.textColor;
@@ -171,7 +186,8 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
     if (videoUrl) {
       const a = document.createElement('a');
       a.href = videoUrl;
-      a.download = 'SlideCaster_Final.webm';
+      const extension = recorderRef.current?.mimeType.includes('mp4') ? 'mp4' : 'webm';
+      a.download = `SlideCaster_Final.${extension}`;
       a.click();
     }
   };
@@ -211,7 +227,6 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-10">
-        {/* Left: Video Preview */}
         <div className="flex-grow flex flex-col gap-4">
             <div className="bg-slate-900/50 rounded-3xl p-6 border border-white/5 flex flex-col gap-4">
                 <div className="flex items-center justify-between text-xs font-bold px-2">
@@ -253,7 +268,6 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
             </div>
         </div>
 
-        {/* Right: Settings Panel */}
         <aside className="lg:w-[380px] flex flex-col gap-6">
             <div className="bg-slate-900/50 rounded-3xl p-8 border border-white/5 space-y-8">
                 <h3 className="text-lg font-bold">내보내기 설정</h3>
