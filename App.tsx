@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppStep, SlideData, SubtitleStyle, AudienceLevel, ScriptLength, GenerationOptions, SpeakingRate } from './types';
 import { convertPdfToImages } from './services/pdfService';
 import { generateScript } from './services/geminiService';
@@ -13,6 +13,8 @@ const App: React.FC = () => {
   const [slides, setSlides] = useState<SlideData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>({
     fontSize: 40,
     textColor: '#ffffff',
@@ -29,6 +31,14 @@ const App: React.FC = () => {
     speakingRate: 'normal'
   });
 
+  // Ensure API Key exists
+  useEffect(() => {
+    if (!process.env.API_KEY) {
+      console.error("Gemini API Key is missing. Check your environment variables.");
+      setError("시스템 초기화 오류: API 키가 설정되지 않았습니다.");
+    }
+  }, []);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent) => {
     let file: File | undefined;
     if ('files' in e.target && e.target.files?.[0]) {
@@ -42,8 +52,11 @@ const App: React.FC = () => {
 
     try {
       setIsLoading(true);
+      setError(null);
       setLoadingText('PDF에서 슬라이드를 추출하는 중...');
       const images = await convertPdfToImages(file);
+      if (!images || images.length === 0) throw new Error("추출된 슬라이드가 없습니다.");
+      
       const newSlides: SlideData[] = images.map((img, idx) => ({
         id: `slide-${Date.now()}-${idx}`,
         image: img,
@@ -51,9 +64,9 @@ const App: React.FC = () => {
       }));
       setSlides(newSlides);
       setStep(AppStep.REVIEW);
-    } catch (error) {
-      console.error(error);
-      alert('PDF 변환 중 오류가 발생했습니다.');
+    } catch (err: any) {
+      console.error(err);
+      setError(`PDF 처리 오류: ${err.message || '파일을 읽는 도중 문제가 발생했습니다.'}`);
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +74,7 @@ const App: React.FC = () => {
 
   const handleStartGeneration = async () => {
     setIsLoading(true);
+    setError(null);
     setLoadingText('AI가 슬라이드를 분석하여 대본을 작성하고 있습니다...');
     const updatedSlides = [...slides];
     
@@ -72,8 +86,9 @@ const App: React.FC = () => {
       }
       setSlides(updatedSlides);
       setStep(AppStep.SCRIPT);
-    } catch (error) {
-      alert('대본 생성 중 오류가 발생했습니다.');
+    } catch (err: any) {
+      console.error(err);
+      setError(`대본 생성 오류: ${err.message || 'AI 서비스 연결에 실패했습니다.'}`);
     } finally {
       setIsLoading(false);
     }
@@ -83,9 +98,28 @@ const App: React.FC = () => {
     setSlides(prev => prev.filter(s => s.id !== id));
   };
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#0b1120] flex items-center justify-center p-8">
+        <div className="bg-red-500/10 border border-red-500/20 p-8 rounded-3xl max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+             <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">오류가 발생했습니다</h2>
+          <p className="text-red-200/60 text-sm mb-8 leading-relaxed">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full py-3 bg-red-500 hover:bg-red-400 text-white rounded-xl font-bold transition-all shadow-lg shadow-red-500/20"
+          >
+            다시 시도하기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0b1120] text-slate-200 flex flex-col">
-      {/* Navigation Header */}
       <header className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-[#0b1120] sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center shadow-lg shadow-blue-600/20">
@@ -94,9 +128,8 @@ const App: React.FC = () => {
           <span className="text-lg font-bold tracking-tight">SlideCaster</span>
         </div>
 
-        {/* Step Indicator */}
         {step !== AppStep.UPLOAD && (
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-6">
             {[
               { id: AppStep.REVIEW, label: '검토' },
               { id: AppStep.SETTINGS, label: '설정' },
@@ -109,28 +142,28 @@ const App: React.FC = () => {
                 }`}>
                   {idx + 1}
                 </div>
-                <span className={`text-xs font-medium ${step === s.id ? 'text-white' : 'text-slate-500'}`}>
+                <span className={`text-[11px] font-medium hidden sm:inline ${step === s.id ? 'text-white' : 'text-slate-500'}`}>
                   {s.label}
                 </span>
-                {idx < 3 && <div className="w-8 h-[1px] bg-slate-800 ml-4"></div>}
+                {idx < 3 && <div className="w-4 h-[1px] bg-slate-800 ml-2"></div>}
               </div>
             ))}
           </div>
         )}
 
-        <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/30"></div>
+        <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30"></div>
       </header>
 
       <main className="flex-grow flex flex-col items-center">
         {step === AppStep.UPLOAD && (
-          <div className="w-full max-w-5xl py-24 flex flex-col items-center text-center">
-            <h1 className="text-6xl font-black mb-6">슬라이드를 순식간에 <span className="text-blue-500">영상으로</span></h1>
-            <p className="text-slate-400 text-xl mb-12">PDF를 업로드하세요. AI가 대본을 작성하고, 목소리를 입히고, 자막을 제작합니다.</p>
+          <div className="w-full max-w-5xl py-12 md:py-24 flex flex-col items-center text-center px-6">
+            <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">슬라이드를 순식간에 <br/><span className="text-blue-500">영상으로 제작하세요</span></h1>
+            <p className="text-slate-400 text-base md:text-xl mb-12 max-w-2xl">PDF를 업로드하세요. AI가 대본을 작성하고, 목소리를 입히고, 완벽한 자막까지 제작합니다.</p>
             
-            <div className="flex gap-4 mb-16">
+            <div className="flex flex-wrap justify-center gap-3 mb-16">
               {['AI 대본 작성', 'TTS 음성', '자동 자막'].map(t => (
-                <div key={t} className="flex items-center gap-2 bg-slate-900/50 border border-slate-800 px-5 py-2.5 rounded-full text-sm font-medium">
-                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
+                <div key={t} className="flex items-center gap-2 bg-slate-900/50 border border-slate-800 px-4 py-2 rounded-full text-xs font-medium">
+                  <svg className="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
                   {t}
                 </div>
               ))}
@@ -139,15 +172,15 @@ const App: React.FC = () => {
             <div 
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileUpload}
-              className="w-full max-w-2xl aspect-[1.8/1] drop-zone rounded-[3rem] bg-slate-900/30 flex flex-col items-center justify-center cursor-pointer group hover:bg-slate-800/20"
+              className="w-full max-w-xl aspect-video drop-zone rounded-[2rem] bg-slate-900/30 flex flex-col items-center justify-center cursor-pointer group hover:bg-slate-800/20"
             >
               <div className="bg-blue-600/10 p-5 rounded-full mb-6 group-hover:scale-110 transition-transform">
                 <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
               </div>
-              <h3 className="text-xl font-bold mb-2">PDF를 드래그 앤 드롭하세요</h3>
-              <p className="text-slate-500 text-sm mb-8">또는 클릭하여 파일 선택 (최대 50MB)</p>
+              <h3 className="text-lg font-bold mb-1">PDF를 드래그 앤 드롭하세요</h3>
+              <p className="text-slate-500 text-xs mb-8">또는 클릭하여 파일 선택</p>
               <label className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-xl font-bold shadow-xl shadow-blue-600/20 cursor-pointer transition-all active:scale-95">
-                PDF 파일 선택
+                파일 탐색기 열기
                 <input type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
               </label>
             </div>
@@ -195,10 +228,10 @@ const App: React.FC = () => {
 
       {isLoading && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[100]">
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center text-center p-6">
             <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-6"></div>
             <p className="text-xl font-bold mb-2">{loadingText}</p>
-            <p className="text-slate-500 animate-pulse text-sm font-medium">작업이 완료될 때까지 잠시만 기다려 주세요.</p>
+            <p className="text-slate-500 animate-pulse text-sm font-medium">인터넷 속도에 따라 최대 몇 분이 소요될 수 있습니다.</p>
           </div>
         </div>
       )}
