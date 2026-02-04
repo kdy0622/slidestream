@@ -1,6 +1,5 @@
-
-import React, { useState, useEffect } from 'react';
-import { AppStep, SlideData, SubtitleStyle, AudienceLevel, ScriptLength, GenerationOptions, SpeakingRate } from './types';
+import React, { useState } from 'react';
+import { AppStep, SlideData, SubtitleStyle, GenerationOptions } from './types';
 import { convertPdfToImages } from './services/pdfService';
 import { generateScript } from './services/geminiService';
 import ReviewStep from './components/ReviewStep';
@@ -82,23 +81,11 @@ const App: React.FC = () => {
     } catch (err: any) {
       const isQuota = err.message === 'QUOTA_EXCEEDED' || err.message?.includes('429') || err.message?.includes('quota');
       setError({ 
-        message: isQuota ? "무료 API 할당량이 모두 소진되었습니다. 본인의 API 키를 사용하여 계속 진행할 수 있습니다." : `대본 생성 오류: ${err.message || 'AI 서비스 연결에 실패했습니다.'}`, 
+        message: isQuota ? "API 사용량이 초과되었습니다. 잠시 후 다시 시도해주세요." : `대본 생성 오류: ${err.message || 'AI 서비스 연결에 실패했습니다.'}`, 
         isQuota 
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleOpenKeySelection = async () => {
-    try {
-      if ((window as any).aistudio?.openSelectKey) {
-        await (window as any).aistudio.openSelectKey();
-        setError(null);
-        window.location.reload(); // Reload to pick up new key
-      }
-    } catch (e) {
-      console.error("Failed to open key selection", e);
     }
   };
 
@@ -115,23 +102,12 @@ const App: React.FC = () => {
           </div>
           <h2 className="text-xl font-black text-white mb-2">{error.isQuota ? "할당량 초과" : "오류 발생"}</h2>
           <p className="text-slate-400 text-sm mb-8 leading-relaxed">{error.message}</p>
-          
-          <div className="flex flex-col gap-3">
-            {error.isQuota && (
-              <button 
-                onClick={handleOpenKeySelection}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-sm shadow-xl transition-all"
-              >
-                본인 API 키 사용하기
-              </button>
-            )}
-            <button 
-              onClick={() => setError(null)}
-              className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition-all"
-            >
-              닫기
-            </button>
-          </div>
+          <button 
+            onClick={() => setError(null)}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-sm transition-all"
+          >
+            확인
+          </button>
         </div>
       </div>
     );

@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SlideCaster - AI 슬라이드 영상 제작</title>
+  <title>SlideStream AI - PDF to Video</title>
   
   <script>
-    // Gemini SDK 및 환경 변수 호환성을 위한 폴리필
+    // 전역 환경 변수 설정
     window.process = { env: { API_KEY: "" } };
   </script>
 
-  <!-- 외부 라이브러리 (Tailwind, PDF.js) -->
+  <!-- 외부 라이브러리 로드 -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   
@@ -31,7 +31,6 @@
       min-height: 100vh;
     }
 
-    /* 초기 로딩 상태 시각화 */
     #root:empty {
       display: flex;
       align-items: center;
@@ -43,7 +42,7 @@
       font-weight: 700;
     }
     #root:empty::after {
-      content: "애플리케이션을 준비 중입니다...";
+      content: "시스템을 초기화 중입니다...";
       animation: pulse 1.5s infinite;
     }
     @keyframes pulse {
@@ -63,7 +62,7 @@
     }
   </style>
 
-  <!-- 안정적인 ESM 라이브러리 매핑 (버전 고정 및 특수문자 제거) -->
+  <!-- 오류 방지를 위한 정제된 importmap -->
   <script type="importmap">
 {
   "imports": {
@@ -79,7 +78,6 @@
 </head>
 <body class="custom-scrollbar">
   <div id="root"></div>
-  <!-- 진입점 스크립트 -->
   <script type="module" src="index.tsx"></script>
 </body>
 </html>
