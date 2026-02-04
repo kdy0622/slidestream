@@ -51,36 +51,39 @@ const ScriptStep: React.FC<Props> = ({ slides, options, onUpdate, onPrev, onNext
   return (
     <div className="w-full h-full flex flex-col bg-[#0b1120] overflow-hidden">
       <div className="flex-grow flex overflow-hidden">
-        {/* Left Sidebar: Highly Compact Thumbnails */}
-        <aside className="w-40 border-r border-white/5 bg-[#0b1120] flex flex-col overflow-y-auto custom-scrollbar shrink-0">
-          <div className="p-2 border-b border-white/5">
-            <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Slides ({slides.length})</h3>
+        {/* Left Sidebar: Thumbnails */}
+        <aside className="w-48 border-r border-white/5 bg-[#0b1120] flex flex-col overflow-y-auto custom-scrollbar shrink-0">
+          <div className="p-3 border-b border-white/5">
+            <h3 className="text-xs font-bold text-slate-400">슬라이드 ({slides.length})</h3>
           </div>
-          <div className="p-1.5 space-y-1.5">
+          <div className="p-2 space-y-3">
             {slides.map((slide, idx) => (
               <button
                 key={slide.id}
                 onClick={() => setActiveIndex(idx)}
-                className={`w-full group rounded-lg overflow-hidden border transition-all ${
-                  activeIndex === idx ? 'border-blue-600 ring-2 ring-blue-600/10' : 'border-transparent opacity-50'
+                className={`w-full group rounded-lg overflow-hidden border-2 transition-all ${
+                  activeIndex === idx ? 'border-blue-600 ring-4 ring-blue-600/10' : 'border-transparent'
                 }`}
               >
                 <div className="aspect-video bg-black flex items-center justify-center relative">
                   <img src={slide.image} alt="" className="max-h-full max-w-full object-contain" />
-                  <div className={`absolute top-0.5 left-0.5 w-4 h-4 flex items-center justify-center rounded text-[8px] font-black ${
-                    activeIndex === idx ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-500'
+                  <div className={`absolute top-1 left-1 w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold ${
+                    activeIndex === idx ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
                   }`}>
                     {idx + 1}
                   </div>
+                </div>
+                <div className="p-1.5 bg-slate-900/50 text-left">
+                  <p className="text-[10px] font-bold text-slate-500 truncate">슬라이드 {idx + 1}</p>
                 </div>
               </button>
             ))}
           </div>
         </aside>
 
-        {/* Center: Slide Preview Area */}
-        <section className="flex-grow bg-[#0f172a] flex items-center justify-center p-4 relative overflow-hidden">
-          <div className="w-full max-w-3xl aspect-video bg-black rounded-xl shadow-2xl overflow-hidden border border-white/5 flex items-center justify-center">
+        {/* Center: Slide Preview */}
+        <section className="flex-grow bg-[#0f172a] flex items-center justify-center p-8 relative">
+          <div className="w-full max-w-4xl aspect-video bg-black rounded-xl shadow-2xl overflow-hidden border border-white/5 flex items-center justify-center">
             <img 
               src={activeSlide.image} 
               alt="Active Slide" 
@@ -89,68 +92,70 @@ const ScriptStep: React.FC<Props> = ({ slides, options, onUpdate, onPrev, onNext
           </div>
         </section>
 
-        {/* Right Sidebar: Compact Editor */}
-        <aside className="w-80 border-l border-white/5 bg-[#0f172a]/50 flex flex-col shrink-0">
-          <div className="p-4 border-b border-white/5 flex justify-between items-center shrink-0">
-            <h2 className="text-sm font-black flex items-center gap-1.5">
-              대본 편집
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+        {/* Right Sidebar: Script Editor */}
+        <aside className="w-96 border-l border-white/5 bg-[#0b1120] flex flex-col shrink-0">
+          <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#0b1120]">
+            <h2 className="text-sm font-bold flex items-center gap-2">
+              내레이션 대본
+              <span className="flex items-center gap-1 text-[10px] text-green-500 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> 저장됨
+              </span>
             </h2>
             <button 
               onClick={handleRewrite}
               disabled={isRewriting}
-              className="px-2 py-1 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 rounded text-[9px] font-black transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
             >
-              AI 재생성
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              다시 쓰기
             </button>
           </div>
 
-          <div className="flex-grow relative p-4">
+          <div className="flex-grow relative p-6 bg-[#0b1120]">
+            <div className="flex gap-4 mb-4 text-slate-500">
+               <button className="font-serif italic text-lg hover:text-white">I</button>
+               <button className="font-bold text-lg hover:text-white">B</button>
+            </div>
             <textarea
               value={activeSlide.script}
               onChange={(e) => onUpdate(activeSlide.id, e.target.value)}
-              className="w-full h-full bg-transparent text-slate-300 text-xs leading-relaxed focus:outline-none resize-none placeholder:text-slate-800 custom-scrollbar"
-              placeholder="대본을 입력하세요..."
+              className="w-full h-full bg-transparent text-slate-300 text-sm leading-relaxed focus:outline-none resize-none placeholder:text-slate-800 custom-scrollbar"
+              placeholder="슬라이드에 대한 설명을 입력하세요..."
             />
-          </div>
-
-          <div className="p-4 bg-[#0b1120]/50 border-t border-white/5 flex gap-2 shrink-0">
-              <button 
-                onClick={handleAudioPreview}
-                disabled={isPreviewingAudio}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
-              >
-                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
-                미리듣기
-              </button>
           </div>
         </aside>
       </div>
 
-      {/* Bottom Compact Footer */}
-      <footer className="h-12 border-t border-white/5 bg-[#0b1120] flex items-center justify-between px-6 shrink-0">
+      {/* Footer Navigation */}
+      <footer className="h-16 border-t border-white/5 bg-[#0b1120] flex items-center justify-between px-6 shrink-0">
         <button 
           onClick={onPrev}
-          className="flex items-center gap-1 text-slate-500 hover:text-white transition-colors text-[10px] font-black uppercase tracking-widest"
+          className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-all text-sm font-bold"
         >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7"/></svg>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7"/></svg>
           이전
         </button>
 
-        <div className="text-slate-600 text-[10px] font-black uppercase tracking-widest">
-          Slide <span className="text-blue-500">{activeIndex + 1}</span> / {slides.length}
+        <div className="text-slate-500 text-xs font-bold">
+          {activeIndex + 1} / {slides.length}
         </div>
 
-        <button 
-          onClick={() => {
-            if (activeIndex < slides.length - 1) setActiveIndex(activeIndex + 1);
-            else onNext();
-          }}
-          className="flex items-center gap-1 text-white hover:text-blue-500 transition-colors text-[10px] font-black uppercase tracking-widest"
-        >
-          {activeIndex < slides.length - 1 ? '다음 슬라이드' : '최종 내보내기'}
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7"/></svg>
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={handleAudioPreview}
+            disabled={isPreviewingAudio}
+            className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-bold transition-all disabled:opacity-50"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+            오디오 미리듣기
+          </button>
+          <button 
+            onClick={onNext}
+            className="flex items-center gap-2 px-8 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-black shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+          >
+            비디오 미리보기
+          </button>
+        </div>
       </footer>
     </div>
   );
