@@ -1,11 +1,9 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { SlideData, GenerationOptions, SubtitleStyle, AudienceLevel, ScriptLength, SpeakingRate } from '../types';
 
 interface Props {
   slides: SlideData[];
   options: GenerationOptions;
-  // Fix: Changed React.SetOptionsAction to React.SetStateAction
   setOptions: React.Dispatch<React.SetStateAction<GenerationOptions>>;
   style: SubtitleStyle;
   setStyle: React.Dispatch<React.SetStateAction<SubtitleStyle>>;
