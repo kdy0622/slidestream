@@ -36,22 +36,8 @@ const handleApiError = (error: any) => {
   if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('quota')) {
     throw new Error("QUOTA_EXCEEDED");
   }
-  
-  if (errorMessage.includes('API Key must be set')) {
-    throw new Error("시스템 API 키가 설정되지 않았습니다. 환경 설정을 확인해주세요.");
-  }
 
   throw error;
-};
-
-// API 인스턴스를 안전하게 생성하는 헬퍼 함수
-const getAiInstance = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey || apiKey.trim() === "") {
-    console.error("Fatal: process.env.API_KEY is missing or empty.");
-    throw new Error("An API Key must be set when running in a browser");
-  }
-  return new GoogleGenAI({ apiKey });
 };
 
 export const generateScript = async (
@@ -59,7 +45,9 @@ export const generateScript = async (
   audience: string,
   length: string
 ): Promise<string> => {
-  const ai = getAiInstance();
+  // Use the API_KEY directly from the environment
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
   const lengthDesc = {
     short: '30초 미만 (약 2-3문장)',
     medium: '1분 미만 (약 5-7문장)',
@@ -99,7 +87,7 @@ export const generateTTS = async (
   audioContext: AudioContext,
   playbackRate: number = 1.0
 ): Promise<{ buffer: AudioBuffer; duration: number }> => {
-  const ai = getAiInstance();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
