@@ -28,7 +28,6 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
     setCurrentProgress(0);
     setVideoUrl(null);
     
-    // Initialized AudioContext with 24000Hz sample rate as recommended for Gemini TTS
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
     audioContextRef.current = audioContext;
 
@@ -36,7 +35,6 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
       const preparedSlides = [...slides];
       for (let i = 0; i < preparedSlides.length; i++) {
         setCurrentProgress(i + 1);
-        // Passing the user-selected voiceName to the TTS service
         const { buffer, duration } = await generateTTS(preparedSlides[i].script, audioContext, options.voiceName, options.exportSpeed);
         preparedSlides[i].audioBuffer = buffer;
         preparedSlides[i].duration = duration;
@@ -45,7 +43,7 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
     } catch (error: any) {
       console.error(error);
       const isKeyError = error.message === 'API_KEY_INVALID' || error.message === 'API_KEY_MISSING';
-      alert(isKeyError ? 'API 키가 유효하지 않거나 설정되지 않았습니다. 관리자에게 문의하세요.' : '비디오 제작 중 오류가 발생했습니다.');
+      alert(isKeyError ? 'API 키 오류가 발생했습니다. 프로젝트의 API 키 설정을 확인해주세요.' : '비디오 제작 중 오류가 발생했습니다.');
       setStatus('idle');
     }
   };
@@ -83,10 +81,10 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
     const totalHeight = lines.length * lineHeight;
     const maxLineWidth = Math.max(...lines.map(l => ctx.measureText(l).width));
 
-    // 자막 위치 하단 밀착 (기존 80 -> 40)
-    let y = canvas.height - (40 * scaleFactor);
+    // 자막 위치를 화면 최하단에 더 가깝게 (바닥에서 50px)
+    let y = canvas.height - (50 * scaleFactor);
     if (subtitleStyle.position === 'middle') y = (canvas.height - totalHeight) / 2 + fontSize;
-    if (subtitleStyle.position === 'top') y = (40 * scaleFactor) + fontSize;
+    if (subtitleStyle.position === 'top') y = (50 * scaleFactor) + fontSize;
 
     const hexToRgb = (hex: string) => {
       const r = parseInt(hex.slice(1, 3), 16);
@@ -98,10 +96,10 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
     ctx.fillStyle = `rgba(${hexToRgb(subtitleStyle.backgroundColor)}, ${subtitleStyle.backgroundOpacity})`;
     const px = 40 * scaleFactor, py = 15 * scaleFactor;
     const rx = (canvas.width - maxLineWidth) / 2 - px;
-    const ry = y - fontSize - py + (fontSize * 0.2);
+    const ry = y - totalHeight + (fontSize * 0.2) - py;
     const rw = maxLineWidth + px * 2;
-    const rh = totalHeight + py * 2 - (fontSize * 0.2);
-    const radius = 10 * scaleFactor;
+    const rh = totalHeight + py * 2;
+    const radius = 12 * scaleFactor;
     
     ctx.beginPath();
     if (ctx.roundRect) {
@@ -113,9 +111,11 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
 
     ctx.fillStyle = subtitleStyle.textColor;
     ctx.textBaseline = 'bottom';
+    const startY = y;
     lines.forEach((line, i) => {
       const lineW = ctx.measureText(line).width;
-      ctx.fillText(line, (canvas.width - lineW) / 2, y + (i * lineHeight));
+      // 아래서부터 위로 쌓이는게 아니라 위에서 아래로 순차적으로
+      ctx.fillText(line, (canvas.width - lineW) / 2, y - (lines.length - 1 - i) * lineHeight);
     });
   };
 
@@ -139,13 +139,20 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
       ...audioDest.stream.getAudioTracks()
     ]);
 
-    const recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm;codecs=vp9,opus', videoBitsPerSecond: 8000000 });
+    const recorder = new MediaRecorder(combinedStream, { 
+      mimeType: 'video/webm;codecs=vp9,opus', 
+      videoBitsPerSecond: 8000000 
+    });
     recorderRef.current = recorder;
 
-    recorder.ondataavailable = (e) => chunks.push(e.data);
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    
     recorder.onstop = () => {
       const blob = new Blob(chunks, { type: 'video/webm' });
-      setVideoUrl(URL.createObjectURL(blob));
+      const url = URL.createObjectURL(blob);
+      setVideoUrl(url);
       setStatus('finished');
     };
 
@@ -156,7 +163,7 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
 
     const renderLoop = () => {
       if (currentSlideIndex >= preparedSlides.length) {
-        recorder.stop();
+        if (recorder.state === 'recording') recorder.stop();
         return;
       }
 
@@ -202,7 +209,7 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
         if (elapsed >= slide.duration!) {
           currentSlideIndex++;
           slideStartTime = audioContextRef.current!.currentTime;
-          setCurrentProgress(currentSlideIndex + 1);
+          setCurrentProgress(Math.min(currentSlideIndex + 1, preparedSlides.length));
           renderLoop();
         } else {
           requestRef.current = requestAnimationFrame(renderLoop);
@@ -222,6 +229,17 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
     });
 
     renderLoop();
+  };
+
+  const handleDownload = () => {
+    if (videoUrl) {
+      const a = document.createElement('a');
+      a.href = videoUrl;
+      a.download = `SlideStream_${Date.now()}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   return (
@@ -254,7 +272,9 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
 
             <div className="aspect-video bg-black relative flex items-center justify-center">
               {status === 'finished' && videoUrl ? (
-                <video src={videoUrl} controls className="w-full h-full object-contain" />
+                <div className="w-full h-full relative group/video">
+                  <video src={videoUrl} controls className="w-full h-full object-contain" />
+                </div>
               ) : (
                 <div className="w-full h-full relative">
                   <img src={slides[0].image} className="w-full h-full object-contain opacity-40" />
@@ -353,14 +373,24 @@ const VideoExporter: React.FC<Props> = ({ slides, options, setOptions, subtitleS
                </div>
             </div>
 
-            <button 
-              onClick={handleStartGeneration}
-              disabled={status === 'recording' || status === 'preparing'}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 py-3.5 rounded-xl text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 active:scale-[0.98] transition-all"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-              WebM 생성
-            </button>
+            {status === 'finished' ? (
+              <button 
+                onClick={handleDownload}
+                className="w-full bg-green-600 hover:bg-green-500 py-3.5 rounded-xl text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-600/30 active:scale-[0.98] transition-all animate-in zoom-in-95 duration-300"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                비디오 다운로드
+              </button>
+            ) : (
+              <button 
+                onClick={handleStartGeneration}
+                disabled={status === 'recording' || status === 'preparing'}
+                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 py-3.5 rounded-xl text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 active:scale-[0.98] transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                WebM 생성
+              </button>
+            )}
           </div>
 
           <div className="mt-6 bg-blue-600/10 border border-blue-500/20 rounded-xl p-4 flex gap-3 shadow-lg">

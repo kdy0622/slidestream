@@ -93,7 +93,6 @@ export const generateScript = async (
   }
 };
 
-// Added voiceName parameter to support dynamic voice selection
 export const generateTTS = async (
   text: string,
   audioContext: AudioContext,
@@ -101,7 +100,6 @@ export const generateTTS = async (
   playbackRate: number = 1.0
 ): Promise<{ buffer: AudioBuffer; duration: number }> => {
   const ai = getAiClient();
-  // Extracting voice ID (e.g., 'Kore') from the label string
   const voiceId = voiceNameLabel.split(' ')[0] || 'Kore';
   
   try {
@@ -124,7 +122,6 @@ export const generateTTS = async (
     const audioBytes = decode(base64Audio);
     const audioBuffer = await decodeAudioData(audioBytes, audioContext, 24000, 1);
     
-    // speed 조절은 duration 계산 시 반영 (내보내기 엔진에서 처리)
     return {
       buffer: audioBuffer,
       duration: audioBuffer.duration / playbackRate
