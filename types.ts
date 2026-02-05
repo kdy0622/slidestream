@@ -43,4 +43,7 @@ export interface GenerationOptions {
   length: ScriptLength;
   voiceName: string;
   speakingRate: SpeakingRate;
+  showSubtitles: boolean;
+  resolution: '720p' | '1080p';
+  exportSpeed: number;
 }

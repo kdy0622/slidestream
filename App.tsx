@@ -27,7 +27,10 @@ const App: React.FC = () => {
     audience: '4050남성',
     length: 'medium',
     voiceName: 'Kore (여성) - 차분하고 부드러운 톤',
-    speakingRate: 'normal'
+    speakingRate: 'normal',
+    showSubtitles: true,
+    resolution: '1080p',
+    exportSpeed: 1.0
   });
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent) => {
@@ -205,6 +208,8 @@ const App: React.FC = () => {
         {step === AppStep.EXPORT && (
           <VideoExporter 
             slides={slides} 
+            options={genOptions}
+            setOptions={setGenOptions}
             subtitleStyle={subtitleStyle}
             onPrev={() => setStep(AppStep.SCRIPT)}
           />

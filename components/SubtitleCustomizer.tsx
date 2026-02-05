@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { SlideData, SubtitleStyle } from '../types';
 
@@ -42,9 +41,10 @@ const SubtitleCustomizer: React.FC<Props> = ({ slides, style, setStyle, onPrev, 
       const textHeight = fontSize;
       const x = (canvas.width - textWidth) / 2;
       
-      let y = canvas.height - 100;
+      // 하단 위치 조정 (기존 100 -> 60)
+      let y = canvas.height - 60;
       if (style.position === 'middle') y = canvas.height / 2;
-      if (style.position === 'top') y = 100;
+      if (style.position === 'top') y = 60;
 
       const hexToRgb = (hex: string) => {
         const r = parseInt(hex.slice(1, 3), 16);

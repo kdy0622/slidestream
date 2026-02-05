@@ -23,8 +23,8 @@ const SlideEditor: React.FC<Props> = ({ slides, onUpdateScript, onGenerateAll, g
               onChange={(e) => setGenOptions(prev => ({ ...prev, audience: e.target.value as AudienceLevel }))}
               className="bg-slate-800 border-none text-white p-3 rounded-xl focus:ring-2 focus:ring-blue-500 w-40 font-semibold"
             >
-              {/* Fix: Updated options to match AudienceLevel type definition in types.ts */}
-              {['3040남성', '3040여성', '5060남성', '5060여성', '60세이상남성', '60세이상여성', '전문가', '직접 입력'].map(a => (
+              {/* Corrected options to match AudienceLevel type definition in types.ts */}
+              {['30세이하여성', '30세이하남성', '4050여성', '4050남성', '5060여성', '5060남성', '70이상', '전문가', '직접 입력'].map(a => (
                 <option key={a} value={a}>{a}</option>
               ))}
             </select>

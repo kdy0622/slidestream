@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+
+// Added React import and default export at the bottom
+import React, { useEffect, useRef, useState } from 'react';
 import { SlideData, GenerationOptions, SubtitleStyle, AudienceLevel, ScriptLength, SpeakingRate } from '../types';
 
 interface Props {
@@ -65,61 +67,61 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
       const centerShiftY = (canvas.height - img.height * ratio) / 2;
       ctx.drawImage(img, 0, 0, img.width, img.height, centerShiftX, centerShiftY, img.width * ratio, img.height * ratio);
 
-      // 엔터로 구분된 첫 문단만 미리보기에 표시 (가독성 확인용)
-      const fullText = slides[0].script || "여기에 자막이 표시됩니다.\n대본 편집에서 엔터를 치면 새로운 자막으로 생성됩니다.";
-      const firstSegment = fullText.split('\n')[0];
-      
-      let fontSize = style.fontSize;
-      ctx.font = `bold ${fontSize}px 'Pretendard', sans-serif`;
-      
-      const maxWidth = canvas.width * 0.85;
-      const lines = wrapText(ctx, firstSegment, maxWidth);
-      
-      const lineHeight = fontSize * 1.3;
-      const totalHeight = lines.length * lineHeight;
-      const maxLineWidth = Math.max(...lines.map(l => ctx.measureText(l).width));
-      
-      let y = canvas.height - 120;
-      if (style.position === 'middle') y = (canvas.height - totalHeight) / 2 + fontSize;
-      if (style.position === 'top') y = 100 + fontSize;
+      if (options.showSubtitles) {
+        const fullText = slides[0].script || "여기에 자막이 표시됩니다.\n대본 편집에서 엔터를 치면 새로운 자막으로 생성됩니다.";
+        const firstSegment = fullText.split('\n')[0];
+        
+        let fontSize = style.fontSize;
+        ctx.font = `bold ${fontSize}px 'Pretendard', sans-serif`;
+        
+        const maxWidth = canvas.width * 0.85;
+        const lines = wrapText(ctx, firstSegment, maxWidth);
+        
+        const lineHeight = fontSize * 1.3;
+        const totalHeight = lines.length * lineHeight;
+        const maxLineWidth = Math.max(...lines.map(l => ctx.measureText(l).width));
+        
+        // 자막 위치 하향 조정 (기존 60 -> 40)
+        let y = canvas.height - 40;
+        if (style.position === 'middle') y = (canvas.height - totalHeight) / 2 + fontSize;
+        if (style.position === 'top') y = 40 + fontSize;
 
-      const hexToRgb = (hex: string) => {
-        const r = parseInt(hex.slice(1, 3), 16);
-        const g = parseInt(hex.slice(3, 5), 16);
-        const b = parseInt(hex.slice(5, 7), 16);
-        return `${r}, ${g}, ${b}`;
-      };
+        const hexToRgb = (hex: string) => {
+          const r = parseInt(hex.slice(1, 3), 16);
+          const g = parseInt(hex.slice(3, 5), 16);
+          const b = parseInt(hex.slice(5, 7), 16);
+          return `${r}, ${g}, ${b}`;
+        };
 
-      // 배경 박스
-      ctx.fillStyle = `rgba(${hexToRgb(style.backgroundColor)}, ${style.backgroundOpacity})`;
-      const px = 30, py = 20;
-      const rx = (canvas.width - maxLineWidth) / 2 - px;
-      const ry = y - fontSize - py + (fontSize * 0.2);
-      const rw = maxLineWidth + px * 2;
-      const rh = totalHeight + py * 2 - (fontSize * 0.2);
-      
-      ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(rx, ry, rw, rh, 15);
-      } else {
-        ctx.rect(rx, ry, rw, rh);
+        ctx.fillStyle = `rgba(${hexToRgb(style.backgroundColor)}, ${style.backgroundOpacity})`;
+        const px = 30, py = 12;
+        const rx = (canvas.width - maxLineWidth) / 2 - px;
+        const ry = y - fontSize - py + (fontSize * 0.2);
+        const rw = maxLineWidth + px * 2;
+        const rh = totalHeight + py * 2 - (fontSize * 0.2);
+        
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(rx, ry, rw, rh, 10);
+        } else {
+          ctx.rect(rx, ry, rw, rh);
+        }
+        ctx.fill();
+
+        ctx.fillStyle = style.textColor;
+        ctx.textBaseline = 'bottom';
+        lines.forEach((line, i) => {
+          const lineW = ctx.measureText(line).width;
+          ctx.fillText(line, (canvas.width - lineW) / 2, y + (i * lineHeight));
+        });
       }
-      ctx.fill();
-
-      // 텍스트 그리기
-      ctx.fillStyle = style.textColor;
-      ctx.textBaseline = 'bottom';
-      lines.forEach((line, i) => {
-        const lineW = ctx.measureText(line).width;
-        ctx.fillText(line, (canvas.width - lineW) / 2, y + (i * lineHeight));
-      });
     };
   };
 
   useEffect(() => {
     const timer = setTimeout(() => drawPreview(), 100);
     return () => clearTimeout(timer);
-  }, [style, slides]);
+  }, [style, slides, options.showSubtitles]);
 
   const audienceLevels: { level: AudienceLevel, icon: string }[] = [
     { level: '30세이하여성', icon: '✨' },
@@ -143,7 +145,9 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
           <div className="w-full aspect-video bg-black rounded-xl overflow-hidden relative border border-white/10 shadow-2xl">
              <canvas ref={canvasRef} className="w-full h-full object-contain" />
           </div>
-          <p className="mt-2 text-slate-500 text-[10px] font-bold">자막 스타일 미리보기 (첫 문단 기준)</p>
+          <p className="mt-2 text-slate-500 text-[10px] font-bold">
+            {options.showSubtitles ? "자막 위치 하단 밀착 조정됨" : "자막 표시가 비활성화되었습니다."}
+          </p>
         </div>
       </div>
 
@@ -154,6 +158,21 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
              <h2 className="text-xl font-black leading-tight">AI 페르소나 및 스타일</h2>
            </div>
         </div>
+
+        <section className="flex items-center justify-between bg-blue-600/10 p-4 rounded-2xl border border-blue-500/20">
+          <div>
+            <h4 className="text-sm font-black text-white">영상 내 자막 표시</h4>
+            <p className="text-[10px] text-slate-400 font-bold mt-0.5">최종 영상 하단에 자막을 노출할지 선택합니다.</p>
+          </div>
+          <button 
+            onClick={() => setOptions(prev => ({ ...prev, showSubtitles: !prev.showSubtitles }))}
+            className={`w-12 h-6 rounded-full transition-colors relative flex items-center px-1 ${
+              options.showSubtitles ? 'bg-blue-600' : 'bg-slate-700'
+            }`}
+          >
+            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${options.showSubtitles ? 'translate-x-6' : 'translate-x-0'}`}></div>
+          </button>
+        </section>
 
         <section>
           <h4 className="text-[9px] font-black mb-1.5 text-slate-500 uppercase tracking-widest">타겟 청중</h4>
@@ -242,66 +261,85 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
           </div>
         </section>
 
-        <section className="bg-slate-900/50 p-4 rounded-3xl border border-white/5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-                <label className="text-[9px] font-black text-slate-500 mb-1.5 block uppercase tracking-widest">글꼴</label>
-                <select 
-                value={style.fontFamily}
-                onChange={(e) => setStyle(prev => ({ ...prev, fontFamily: e.target.value }))}
-                className="w-full bg-slate-950 border border-white/10 text-slate-300 px-2.5 py-1.5 rounded-lg text-[10px] font-bold outline-none"
-                >
-                <option value="Pretendard">기본 고딕</option>
-                <option value="serif">명조체</option>
-                <option value="monospace">코드체</option>
-                </select>
+        {options.showSubtitles && (
+          <section className="bg-slate-900/50 p-4 rounded-3xl border border-white/5 space-y-4 animate-in fade-in duration-300">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                  <label className="text-[9px] font-black text-slate-500 mb-1.5 block uppercase tracking-widest">글꼴</label>
+                  <select 
+                  value={style.fontFamily}
+                  onChange={(e) => setStyle(prev => ({ ...prev, fontFamily: e.target.value }))}
+                  className="w-full bg-slate-950 border border-white/10 text-slate-300 px-2.5 py-1.5 rounded-lg text-[10px] font-bold outline-none"
+                  >
+                  <option value="Pretendard">기본 고딕</option>
+                  <option value="serif">명조체</option>
+                  <option value="monospace">코드체</option>
+                  </select>
+              </div>
+              <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">크기</label>
+                      <span className="text-[9px] font-black text-blue-500">{style.fontSize}PX</span>
+                  </div>
+                  <input 
+                  type="range" min="24" max="80" value={style.fontSize}
+                  onChange={(e) => setStyle(prev => ({ ...prev, fontSize: parseInt(e.target.value) }))}
+                  className="w-full accent-blue-600 h-1 bg-slate-950 rounded-full appearance-none cursor-pointer"
+                  />
+              </div>
             </div>
-            <div>
-                <div className="flex justify-between items-center mb-1.5">
-                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">크기</label>
-                    <span className="text-[9px] font-black text-blue-500">{style.fontSize}PX</span>
-                </div>
-                <input 
-                type="range" min="24" max="80" value={style.fontSize}
-                onChange={(e) => setStyle(prev => ({ ...prev, fontSize: parseInt(e.target.value) }))}
-                className="w-full accent-blue-600 h-1 bg-slate-950 rounded-full appearance-none cursor-pointer"
-                />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-3 gap-3">
-             <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">글자색</label>
-                <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-white/5">
-                   <input 
-                    type="color" value={style.textColor}
-                    onChange={(e) => setStyle(prev => ({ ...prev, textColor: e.target.value }))}
-                    className="w-5 h-5 bg-transparent border-none cursor-pointer"
-                   />
-                   <span className="text-[8px] font-mono text-slate-500 uppercase">{style.textColor}</span>
-                </div>
-             </div>
-             <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">배경색</label>
-                <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-white/5">
-                   <input 
-                    type="color" value={style.backgroundColor}
-                    onChange={(e) => setStyle(prev => ({ ...prev, backgroundColor: e.target.value }))}
-                    className="w-5 h-5 bg-transparent border-none cursor-pointer"
-                   />
-                   <span className="text-[8px] font-mono text-slate-500 uppercase">{style.backgroundColor}</span>
-                </div>
-             </div>
-             <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">투명 {Math.round(style.backgroundOpacity * 100)}%</label>
-                <input 
-                type="range" min="0" max="1" step="0.05" value={style.backgroundOpacity}
-                onChange={(e) => setStyle(prev => ({ ...prev, backgroundOpacity: parseFloat(e.target.value) }))}
-                className="w-full accent-blue-600 h-1 bg-slate-950 rounded-full appearance-none cursor-pointer"
-                />
-             </div>
-          </div>
-        </section>
+            <div className="grid grid-cols-3 gap-3">
+               <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">글자색</label>
+                  <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-white/5">
+                     <input 
+                      type="color" value={style.textColor}
+                      onChange={(e) => setStyle(prev => ({ ...prev, textColor: e.target.value }))}
+                      className="w-5 h-5 bg-transparent border-none cursor-pointer"
+                     />
+                     <span className="text-[8px] font-mono text-slate-500 uppercase">{style.textColor}</span>
+                  </div>
+               </div>
+               <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">배경색</label>
+                  <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-white/5">
+                     <input 
+                      type="color" value={style.backgroundColor}
+                      onChange={(e) => setStyle(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                      className="w-5 h-5 bg-transparent border-none cursor-pointer"
+                     />
+                     <span className="text-[8px] font-mono text-slate-500 uppercase">{style.backgroundColor}</span>
+                  </div>
+               </div>
+               <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">투명 {Math.round(style.backgroundOpacity * 100)}%</label>
+                  <input 
+                  type="range" min="0" max="1" step="0.05" value={style.backgroundOpacity}
+                  onChange={(e) => setStyle(prev => ({ ...prev, backgroundOpacity: parseFloat(e.target.value) }))}
+                  className="w-full accent-blue-600 h-1 bg-slate-950 rounded-full appearance-none cursor-pointer"
+                  />
+               </div>
+            </div>
+            
+            <div>
+              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">표시 위치</label>
+              <div className="flex bg-slate-950 p-1 rounded-xl border border-white/5">
+                 {(['top', 'middle', 'bottom'] as const).map(pos => (
+                   <button 
+                    key={pos}
+                    onClick={() => setStyle(prev => ({ ...prev, position: pos }))}
+                    className={`flex-1 py-1 rounded-lg text-[9px] font-black transition-all ${
+                      style.position === pos ? 'bg-slate-800 text-blue-500' : 'text-slate-600'
+                    }`}
+                   >
+                     {pos.toUpperCase()}
+                   </button>
+                 ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         <div className="flex gap-2 mt-auto pb-4 pt-2 border-t border-white/5">
            <button onClick={onPrev} className="flex-1 py-3 bg-slate-800 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all active:scale-95">이전 단계</button>

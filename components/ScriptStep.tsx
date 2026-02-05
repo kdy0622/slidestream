@@ -35,8 +35,10 @@ const ScriptStep: React.FC<Props> = ({ slides, options, onUpdate, onPrev, onNext
     if (isPreviewingAudio) return;
     try {
       setIsPreviewingAudio(true);
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const { buffer } = await generateTTS(activeSlide.script, audioCtx);
+      // Initialized AudioContext with explicit sampleRate for Gemini PCM audio
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      // Passing user-selected voiceName for the audio preview
+      const { buffer } = await generateTTS(activeSlide.script, audioCtx, options.voiceName);
       const source = audioCtx.createBufferSource();
       source.buffer = buffer;
       source.connect(audioCtx.destination);
@@ -98,7 +100,7 @@ const ScriptStep: React.FC<Props> = ({ slides, options, onUpdate, onPrev, onNext
             <h2 className="text-sm font-bold flex items-center gap-2">
               내레이션 대본
               <span className="flex items-center gap-1 text-[10px] text-green-500 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> 저장됨
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> 자동저장
               </span>
             </h2>
             <button 
@@ -107,15 +109,15 @@ const ScriptStep: React.FC<Props> = ({ slides, options, onUpdate, onPrev, onNext
               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-              다시 쓰기
+              AI 다시 쓰기
             </button>
           </div>
 
+          <div className="p-3 bg-blue-600/5 border-b border-blue-500/10">
+             <p className="text-[10px] font-black text-blue-400 uppercase tracking-tighter">Tip: 엔터(Enter)를 치면 자막이 나누어집니다.</p>
+          </div>
+
           <div className="flex-grow relative p-6 bg-[#0b1120]">
-            <div className="flex gap-4 mb-4 text-slate-500">
-               <button className="font-serif italic text-lg hover:text-white">I</button>
-               <button className="font-bold text-lg hover:text-white">B</button>
-            </div>
             <textarea
               value={activeSlide.script}
               onChange={(e) => onUpdate(activeSlide.id, e.target.value)}
@@ -133,11 +135,11 @@ const ScriptStep: React.FC<Props> = ({ slides, options, onUpdate, onPrev, onNext
           className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white transition-all text-sm font-bold"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7"/></svg>
-          이전
+          이전 단계
         </button>
 
         <div className="text-slate-500 text-xs font-bold">
-          {activeIndex + 1} / {slides.length}
+          {activeIndex + 1} / {slides.length} SLIDES
         </div>
 
         <div className="flex gap-3">
@@ -147,13 +149,13 @@ const ScriptStep: React.FC<Props> = ({ slides, options, onUpdate, onPrev, onNext
             className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-bold transition-all disabled:opacity-50"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
-            오디오 미리듣기
+            음성 들어보기
           </button>
           <button 
             onClick={onNext}
             className="flex items-center gap-2 px-8 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-black shadow-lg shadow-blue-600/20 transition-all active:scale-95"
           >
-            비디오 미리보기
+            영상 제작 시작
           </button>
         </div>
       </footer>
