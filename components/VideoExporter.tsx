@@ -97,7 +97,7 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
       return `${r}, ${g}, ${b}`;
     };
 
-    // Background
+    // 배경 박스
     ctx.fillStyle = `rgba(${hexToRgb(subtitleStyle.backgroundColor)}, ${subtitleStyle.backgroundOpacity})`;
     const px = 40 * scaleFactor, py = 25 * scaleFactor;
     const rx = (canvas.width - maxLineWidth) / 2 - px;
@@ -114,7 +114,7 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
     }
     ctx.fill();
 
-    // Text
+    // 자막 텍스트
     ctx.fillStyle = subtitleStyle.textColor;
     ctx.textBaseline = 'bottom';
     lines.forEach((line, i) => {
@@ -169,7 +169,6 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
       const slide = preparedSlides[currentSlideIndex];
       const elapsed = audioContextRef.current!.currentTime - slideStartTime;
 
-      // Draw background image
       const img = new Image();
       img.src = slide.image;
       
@@ -184,13 +183,11 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
         const centerShiftY = (canvas.height - img.height * ratio) / 2;
         ctx.drawImage(img, 0, 0, img.width, img.height, centerShiftX, centerShiftY, img.width * ratio, img.height * ratio);
 
-        // Subtitle Splitting Logic
+        // 엔터 기반 자막 분할 로직 (Enter key based subtitle splitting)
         const segments = slide.script.split('\n').filter(s => s.trim().length > 0);
         const segmentCount = segments.length;
         
         if (segmentCount > 0) {
-            // Calculate which segment to show based on time
-            // We use character count to give each segment proportional time
             const totalChars = segments.join('').length;
             let cumulativeTime = 0;
             let currentSegmentText = segments[segmentCount - 1];
@@ -224,13 +221,11 @@ const VideoExporter: React.FC<Props> = ({ slides, subtitleStyle, onPrev }) => {
       };
     };
 
-    // Play all audio buffers sequentially to the destination
     let audioDelay = 0;
     preparedSlides.forEach((slide) => {
       const source = audioContextRef.current!.createBufferSource();
       source.buffer = slide.audioBuffer!;
       source.connect(audioDest);
-      // Also connect to speakers so user can hear while recording? (Optional, here we just record)
       source.start(audioContextRef.current!.currentTime + audioDelay);
       audioDelay += slide.duration!;
     });

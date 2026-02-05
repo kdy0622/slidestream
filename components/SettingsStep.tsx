@@ -65,8 +65,8 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
       const centerShiftY = (canvas.height - img.height * ratio) / 2;
       ctx.drawImage(img, 0, 0, img.width, img.height, centerShiftX, centerShiftY, img.width * ratio, img.height * ratio);
 
-      // Use only the first paragraph for preview to show realistic size
-      const fullText = slides[0].script || "여기에 자막이 표시됩니다.\n엔터를 치면 다음 자막으로 넘어갑니다.";
+      // 엔터로 구분된 첫 문단만 미리보기에 표시 (가독성 확인용)
+      const fullText = slides[0].script || "여기에 자막이 표시됩니다.\n대본 편집에서 엔터를 치면 새로운 자막으로 생성됩니다.";
       const firstSegment = fullText.split('\n')[0];
       
       let fontSize = style.fontSize;
@@ -79,7 +79,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
       const totalHeight = lines.length * lineHeight;
       const maxLineWidth = Math.max(...lines.map(l => ctx.measureText(l).width));
       
-      const x = (canvas.width - maxLineWidth) / 2;
       let y = canvas.height - 120;
       if (style.position === 'middle') y = (canvas.height - totalHeight) / 2 + fontSize;
       if (style.position === 'top') y = 100 + fontSize;
@@ -91,7 +90,7 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
         return `${r}, ${g}, ${b}`;
       };
 
-      // Background Box
+      // 배경 박스
       ctx.fillStyle = `rgba(${hexToRgb(style.backgroundColor)}, ${style.backgroundOpacity})`;
       const px = 30, py = 20;
       const rx = (canvas.width - maxLineWidth) / 2 - px;
@@ -107,7 +106,7 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
       }
       ctx.fill();
 
-      // Text Lines
+      // 텍스트 그리기
       ctx.fillStyle = style.textColor;
       ctx.textBaseline = 'bottom';
       lines.forEach((line, i) => {
