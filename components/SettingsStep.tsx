@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SlideData, GenerationOptions, SubtitleStyle, AudienceLevel, ScriptLength, SpeakingRate } from '../types';
 
 interface Props {
@@ -23,6 +23,25 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
     { id: 'Zephyr', label: 'Zephyr (여성) - 밝고 명확한 톤' },
   ];
 
+  const wrapText = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number) => {
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = words[0];
+
+    for (let i = 1; i < words.length; i++) {
+      const word = words[i];
+      const width = ctx.measureText(currentLine + " " + word).width;
+      if (width < maxWidth) {
+        currentLine += " " + word;
+      } else {
+        lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    lines.push(currentLine);
+    return lines;
+  };
+
   const drawPreview = () => {
     const canvas = canvasRef.current;
     if (!canvas || slides.length === 0) return;
@@ -46,23 +65,24 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
       const centerShiftY = (canvas.height - img.height * ratio) / 2;
       ctx.drawImage(img, 0, 0, img.width, img.height, centerShiftX, centerShiftY, img.width * ratio, img.height * ratio);
 
-      const text = "자막 스타일이 여기에 표시됩니다.";
+      // Use only the first paragraph for preview to show realistic size
+      const fullText = slides[0].script || "여기에 자막이 표시됩니다.\n엔터를 치면 다음 자막으로 넘어갑니다.";
+      const firstSegment = fullText.split('\n')[0];
+      
       let fontSize = style.fontSize;
       ctx.font = `bold ${fontSize}px 'Pretendard', sans-serif`;
       
-      const maxWidth = canvas.width * 0.9;
-      while (ctx.measureText(text).width > maxWidth && fontSize > 10) {
-        fontSize -= 2;
-        ctx.font = `bold ${fontSize}px 'Pretendard', sans-serif`;
-      }
-
-      const textMetrics = ctx.measureText(text);
-      const textWidth = textMetrics.width;
-      const textHeight = fontSize;
-      const x = (canvas.width - textWidth) / 2;
-      let y = canvas.height - 100;
-      if (style.position === 'middle') y = canvas.height / 2;
-      if (style.position === 'top') y = 100;
+      const maxWidth = canvas.width * 0.85;
+      const lines = wrapText(ctx, firstSegment, maxWidth);
+      
+      const lineHeight = fontSize * 1.3;
+      const totalHeight = lines.length * lineHeight;
+      const maxLineWidth = Math.max(...lines.map(l => ctx.measureText(l).width));
+      
+      const x = (canvas.width - maxLineWidth) / 2;
+      let y = canvas.height - 120;
+      if (style.position === 'middle') y = (canvas.height - totalHeight) / 2 + fontSize;
+      if (style.position === 'top') y = 100 + fontSize;
 
       const hexToRgb = (hex: string) => {
         const r = parseInt(hex.slice(1, 3), 16);
@@ -71,30 +91,29 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
         return `${r}, ${g}, ${b}`;
       };
 
+      // Background Box
       ctx.fillStyle = `rgba(${hexToRgb(style.backgroundColor)}, ${style.backgroundOpacity})`;
-      const px = 30, py = 15;
-      const rx = x - px, ry = y - textHeight/2 - py, rw = textWidth + px*2, rh = textHeight + py*2, radius = 10;
+      const px = 30, py = 20;
+      const rx = (canvas.width - maxLineWidth) / 2 - px;
+      const ry = y - fontSize - py + (fontSize * 0.2);
+      const rw = maxLineWidth + px * 2;
+      const rh = totalHeight + py * 2 - (fontSize * 0.2);
       
       ctx.beginPath();
       if (ctx.roundRect) {
-        ctx.roundRect(rx, ry, rw, rh, radius);
+        ctx.roundRect(rx, ry, rw, rh, 15);
       } else {
-        ctx.moveTo(rx + radius, ry);
-        ctx.arcTo(rx + rw, ry, rx + rw, ry + rh, radius);
-        ctx.arcTo(rx + rw, ry + rh, rx, ry + rh, radius);
-        ctx.arcTo(rx, ry + rh, rx, ry, radius);
-        ctx.arcTo(rx, ry, rx + rw, ry, radius);
-        ctx.closePath();
+        ctx.rect(rx, ry, rw, rh);
       }
       ctx.fill();
 
+      // Text Lines
       ctx.fillStyle = style.textColor;
-      ctx.textBaseline = 'middle';
-      ctx.fillText(text, x, y);
-    };
-    img.onerror = () => {
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.textBaseline = 'bottom';
+      lines.forEach((line, i) => {
+        const lineW = ctx.measureText(line).width;
+        ctx.fillText(line, (canvas.width - lineW) / 2, y + (i * lineHeight));
+      });
     };
   };
 
@@ -117,7 +136,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
 
   return (
     <div className="w-full max-w-7xl px-4 py-4 flex flex-col lg:flex-row gap-4 h-[calc(100vh-64px)] overflow-hidden">
-      {/* Left: Compact Preview */}
       <div className="lg:w-[45%] flex flex-col gap-3 min-h-0">
         <h3 className="text-[11px] font-black flex items-center gap-2 text-slate-500 uppercase tracking-widest">
           프리뷰 <span className="bg-blue-600/20 text-blue-500 px-1.5 py-0.5 rounded text-[9px]">LIVE</span>
@@ -126,11 +144,10 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
           <div className="w-full aspect-video bg-black rounded-xl overflow-hidden relative border border-white/10 shadow-2xl">
              <canvas ref={canvasRef} className="w-full h-full object-contain" />
           </div>
-          <p className="mt-2 text-slate-500 text-[10px] font-bold">슬라이드 미리보기</p>
+          <p className="mt-2 text-slate-500 text-[10px] font-bold">자막 스타일 미리보기 (첫 문단 기준)</p>
         </div>
       </div>
 
-      {/* Right: Compact Controls */}
       <div className="lg:w-[55%] flex flex-col gap-5 overflow-y-auto custom-scrollbar pr-2 min-h-0">
         <div className="flex items-end justify-between">
            <div>
@@ -139,7 +156,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
            </div>
         </div>
 
-        {/* Compact Target Audience */}
         <section>
           <h4 className="text-[9px] font-black mb-1.5 text-slate-500 uppercase tracking-widest">타겟 청중</h4>
           <div className="grid grid-cols-3 xl:grid-cols-5 gap-1">
@@ -158,7 +174,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
           </div>
         </section>
 
-        {/* Script & Speed Compact */}
         <div className="grid grid-cols-2 gap-3">
             <section>
                 <h4 className="text-[9px] font-black mb-1.5 text-slate-500 uppercase tracking-widest">대본 길이</h4>
@@ -195,7 +210,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
             </section>
         </div>
 
-        {/* Voice Selection Compact */}
         <section>
           <h4 className="text-[9px] font-black mb-1.5 text-slate-500 uppercase tracking-widest">내레이션 음성</h4>
           <div className="relative">
@@ -229,7 +243,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
           </div>
         </section>
 
-        {/* Compact Subtitle Style Panel */}
         <section className="bg-slate-900/50 p-4 rounded-3xl border border-white/5 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -291,7 +304,6 @@ const SettingsStep: React.FC<Props> = ({ slides, options, setOptions, style, set
           </div>
         </section>
 
-        {/* Buttons Compact */}
         <div className="flex gap-2 mt-auto pb-4 pt-2 border-t border-white/5">
            <button onClick={onPrev} className="flex-1 py-3 bg-slate-800 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all active:scale-95">이전 단계</button>
            <button 

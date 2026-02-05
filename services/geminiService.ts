@@ -45,7 +45,8 @@ export const generateScript = async (
   audience: string,
   length: string
 ): Promise<string> => {
-  // Use the API_KEY directly from the environment
+  // 시스템 가이드라인에 따라 process.env.API_KEY를 사용하여 인스턴스를 생성합니다.
+  // 이 변수는 배포 환경에서 자동으로 주입되므로 별도의 UI 입력 없이도 동작합니다.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const lengthDesc = {
