@@ -30,12 +30,28 @@ async function decodeAudioData(
 }
 
 const handleApiError = (error: any) => {
-  console.error("Gemini API Error:", error);
+  console.error("Gemini API Error Detail:", error);
   const errorMessage = error?.message || String(error);
+  
   if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('quota')) {
     throw new Error("QUOTA_EXCEEDED");
   }
+  
+  if (errorMessage.includes('API Key must be set')) {
+    throw new Error("시스템 API 키가 설정되지 않았습니다. 환경 설정을 확인해주세요.");
+  }
+
   throw error;
+};
+
+// API 인스턴스를 안전하게 생성하는 헬퍼 함수
+const getAiInstance = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey.trim() === "") {
+    console.error("Fatal: process.env.API_KEY is missing or empty.");
+    throw new Error("An API Key must be set when running in a browser");
+  }
+  return new GoogleGenAI({ apiKey });
 };
 
 export const generateScript = async (
@@ -43,8 +59,7 @@ export const generateScript = async (
   audience: string,
   length: string
 ): Promise<string> => {
-  // 시스템에서 주입하는 process.env.API_KEY를 직접 참조합니다.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiInstance();
   const lengthDesc = {
     short: '30초 미만 (약 2-3문장)',
     medium: '1분 미만 (약 5-7문장)',
@@ -84,13 +99,12 @@ export const generateTTS = async (
   audioContext: AudioContext,
   playbackRate: number = 1.0
 ): Promise<{ buffer: AudioBuffer; duration: number }> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAiInstance();
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: `말하는 속도는 ${playbackRate}배속으로 들리게 자연스럽게 읽어줘: ${text}` }] }],
       config: {
-        // responseModalities는 반드시 단일 요소 ['AUDIO']여야 합니다.
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
